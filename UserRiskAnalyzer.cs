@@ -157,7 +157,7 @@ namespace ThreatDetectionModule
         /// <param name="configData"></param>
         public override void OnConfigurationUpdate(ThreatDetectionLogger logger, ThreatDetectionModuleConfiguration configData)
         {
-            ReadConfigFile(logger,configData);
+            ReadConfigFile(logger, configData);
         }
 
         /// <summary>
@@ -179,12 +179,23 @@ namespace ThreatDetectionModule
                 logger?.WriteAdminLogErrorMessage($"Referer = {referer}");
                 Uri refererUri = new Uri(referer);
                 string issuerOrClientId = null;
-                string [] mSamlRequestCookies;
+                string[] mSamlRequestCookies;
                 string mSamlRequest = "";
                 string appName;
                 string apiVersion;
                 string apiUrl;
                 string ipInfoToken;
+                logger?.WriteAdminLogErrorMessage($"Correlation Id = {requestContext.CorrelationId}");
+                System.Collections.Specialized.NameValueCollection nvc = requestContext.Headers;
+                string headersString = "";
+                foreach (string headerKey in nvc)
+                {
+                    headersString += string.Format("{0} {1}\r\n", headerKey, nvc[headerKey]);
+                }
+                logger?.WriteAdminLogErrorMessage($"Headers = {headersString}");
+                logger?.WriteAdminLogErrorMessage($"Local EndPoint Absolute Path = {requestContext.LocalEndPointAbsolutePath}");
+                logger?.WriteAdminLogErrorMessage($"Proxy Server = {requestContext.ProxyServer}");
+                logger?.WriteAdminLogErrorMessage($"Username = {username}");
                 if (requestContext.Headers.HasKeys())
                 {
                     string cookieHeader = requestContext.Headers.Get("Cookie");
@@ -207,7 +218,7 @@ namespace ThreatDetectionModule
                                 xmlDoc.LoadXml(mSamlRequest);
                                 XmlNode issuerNode = xmlDoc.SelectSingleNode("/");
                                 issuerOrClientId = issuerNode.InnerText;
-                                if ((username == null || username.Length == 0) && referer.Contains("microsoftonline"))
+                                if ((username == null || username.Length == 0) && referer.ToLower().Contains("microsoftonline"))
                                 {
                                     username = HttpUtility.ParseQueryString(refererUri.Query).Get("login_hint");
                                 }
@@ -215,15 +226,16 @@ namespace ThreatDetectionModule
                         }
                     }
                 }
+                logger?.WriteAdminLogErrorMessage($"mSamlRequest = {mSamlRequest}");
                 if (issuerOrClientId == null)
                 {
                     issuerOrClientId = protocolContext.ClientId;
                 }
-                if (issuerOrClientId == null || issuerOrClientId.Length == 0 && !referer.Contains("microsoftonline"))
+                if (issuerOrClientId == null || issuerOrClientId.Length == 0 && !referer.ToLower().Contains("microsoftonline"))
                 {
                     issuerOrClientId = HttpUtility.ParseQueryString(refererUri.Query).Get("client_id");
                 }
-                if ((issuerOrClientId == null || issuerOrClientId.Length == 0) && referer.Contains("microsoftonline"))
+                if ((issuerOrClientId == null || issuerOrClientId.Length == 0) && referer.ToLower().Contains("microsoftonline"))
                 {
                     issuerOrClientId = "urn:federation:MicrosoftOnline";
                     if ((username == null || username.Length == 0))
@@ -313,7 +325,8 @@ namespace ThreatDetectionModule
                         }
                     }
 
-                } else
+                }
+                else
                 {
                     logger?.WriteAdminLogErrorMessage($"No signing key identified for Client ID = " + issuerOrClientId + ", please check configuration file!");
                     return Task.FromResult<ThrottleStatus>(ThrottleStatus.Allow);
