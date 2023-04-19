@@ -198,29 +198,36 @@ namespace ThreatDetectionModule
                 logger?.WriteAdminLogErrorMessage($"Username = {username}");
                 if (requestContext.Headers.HasKeys())
                 {
-                    string cookieHeader = requestContext.Headers.Get("Cookie");
-                    if (cookieHeader.Length > 0)
+                    if (requestContext.Headers["Cookie"] != null)
                     {
-                        Match M = Regex.Match(cookieHeader, string.Format("{0}=(?<value>.*?)$", "MSISSamlRequest"));
-                        if (M.Success)
+                        string cookieHeader = requestContext.Headers.Get("Cookie");
+                        if (cookieHeader.Length > 0)
                         {
-                            mSamlRequestCookies = M.ToString().Split(';');
-                            foreach (string cookie in mSamlRequestCookies)
-                            {
-                                mSamlRequest += cookie.Split(new char[] { '=' }, 2)[1];
-                            }
-                            mSamlRequest = HttpUtility.UrlDecode(Encoding.UTF8.GetString(Convert.FromBase64String(mSamlRequest)));
-                            M = Regex.Match(mSamlRequest, string.Format("(?<={0})(?<value>[A-Za-z0-9+\\/]{{4}})*(?:[A-Za-z0-9+\\/]{{4}}|[A-Za-z0-9+\\/]{{3}}=|[A-Za-z0-9+\\/]{{2}}={{2}}?)(?=\\\\)", "SAMLRequest="));
+                            Match M = Regex.Match(cookieHeader, string.Format("{0}=(?<value>.*?)$", "MSISSamlRequest"));
                             if (M.Success)
                             {
-                                mSamlRequest = Encoding.UTF8.GetString(Convert.FromBase64String(M.ToString()));
-                                XmlDocument xmlDoc = new XmlDocument();
-                                xmlDoc.LoadXml(mSamlRequest);
-                                XmlNode issuerNode = xmlDoc.SelectSingleNode("/");
-                                issuerOrClientId = issuerNode.InnerText;
-                                if ((username == null || username.Length == 0) && referer.ToLower().Contains("microsoftonline"))
+                                mSamlRequestCookies = M.ToString().Split(';');
+                                foreach (string cookie in mSamlRequestCookies)
                                 {
-                                    username = HttpUtility.ParseQueryString(refererUri.Query).Get("login_hint");
+                                    mSamlRequest += cookie.Split(new char[] { '=' }, 2)[1];
+                                }
+                                mSamlRequest = HttpUtility.UrlDecode(Encoding.UTF8.GetString(Convert.FromBase64String(mSamlRequest)));
+                                M = Regex.Match(mSamlRequest, string.Format("(?<={0})(?<value>[A-Za-z0-9+\\/]{{4}})*(?:[A-Za-z0-9+\\/]{{4}}|[A-Za-z0-9+\\/]{{3}}=|[A-Za-z0-9+\\/]{{2}}={{2}}?)(?=\\\\)", "SAMLRequest="));
+                                if (M.Success)
+                                {
+                                    mSamlRequest = Encoding.UTF8.GetString(Convert.FromBase64String(M.ToString()));
+                                    XmlDocument xmlDoc = new XmlDocument();
+                                    xmlDoc.LoadXml(mSamlRequest);
+                                    XmlNode issuerNode = xmlDoc.SelectSingleNode("/");
+                                    issuerOrClientId = issuerNode.InnerText;
+                                    if ((username == null || username.Length == 0) && referer.ToLower().Contains("microsoftonline"))
+                                    {
+                                        username = HttpUtility.ParseQueryString(refererUri.Query).Get("username");
+                                        if (username == null || username.Length == 0)
+                                        {
+                                            username = HttpUtility.ParseQueryString(refererUri.Query).Get("login_hint");
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -240,7 +247,11 @@ namespace ThreatDetectionModule
                     issuerOrClientId = "urn:federation:MicrosoftOnline";
                     if ((username == null || username.Length == 0))
                     {
-                        username = HttpUtility.ParseQueryString(refererUri.Query).Get("login_hint");
+                        username = HttpUtility.ParseQueryString(refererUri.Query).Get("username");
+                        if (username == null || username.Length == 0)
+                        {
+                            username = HttpUtility.ParseQueryString(refererUri.Query).Get("login_hint");
+                        }
                     }
                 }
                 logger?.WriteAdminLogErrorMessage($"Issuer or Client ID = {issuerOrClientId}");
