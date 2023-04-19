@@ -1,0 +1,3 @@
+LookupKey,SigningKey,AppName,APIUrl,APIVersion,IPInfoToken
+e99e3427-<EXAMPLE-CLIENT-ID>-84b68d7547e4,Hds1NHo7sqBP<EXAMPLE>SffPIrhvQ==,cognito.nextlevel3.com,api.nextlevel3.com,v1,c7<EXAMPLE>84
+urn:federation:<EXAMPLE-SAML-ISSUER>:MicrosoftOnline,nlDCX+9Zs1n<EXAMPLE>YaKJcIHzD7,msol.nl3corp.nextlevel3.com,api.nextlevel3.com,v1,c7<EXAMPLE>84
