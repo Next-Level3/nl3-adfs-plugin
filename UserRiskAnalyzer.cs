@@ -269,6 +269,7 @@ namespace ThreatDetectionModule
                     HttpWebRequest requestIPDetails = (HttpWebRequest)WebRequest.Create("https://ipinfo.io/" + requestContext.ClientIpAddresses[0].ToString() + "/json?token=" + ipInfoToken);
                     JObject jsonIPDetails = new JObject();
                     string location = "";
+                    string geo = "";
                     using (HttpWebResponse responseIPDetails = (HttpWebResponse)requestIPDetails.GetResponse())
                     using (Stream stream = responseIPDetails.GetResponseStream())
                     using (StreamReader reader = new StreamReader(stream))
@@ -277,6 +278,7 @@ namespace ThreatDetectionModule
                         if (jsonIPDetails.HasValues)
                         {
                             location = jsonIPDetails["city"] + ", " + jsonIPDetails["region"];
+                            geo = jsonIPDetails["loc"]
                         }
                     }
                     HttpWebRequest request = (HttpWebRequest)WebRequest.Create("https://" + apiUrl + "/nl3/api/" + apiVersion + "/accountProtectionCheck");
@@ -297,6 +299,9 @@ namespace ThreatDetectionModule
                     request.ContentType = "application/json";
                     request.ContentLength = byteArray.Length;
                     request.Headers.Add("x-nl3-authorization-token", handler.WriteToken(token));
+                    request.Headers.Add("x-nl3-device-location", geo;
+                    request.Headers.Add("x-forwarded-for", requestContext.ClientIpAddresses[0].ToString());
+                    request.Headers.Add("User-Agent", requestContext.UserAgentString);
                     request.AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate;
                     Stream requestStream = request.GetRequestStream();
                     requestStream.Write(byteArray, 0, byteArray.Length);
