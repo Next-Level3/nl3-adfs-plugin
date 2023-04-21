@@ -299,7 +299,7 @@ namespace ThreatDetectionModule
                     request.ContentType = "application/json";
                     request.ContentLength = byteArray.Length;
                     request.Headers.Add("x-nl3-authorization-token", handler.WriteToken(token));
-                    request.Headers.Add("x-nl3-device-location", geo;
+                    request.Headers.Add("x-nl3-device-location", geo);
                     request.Headers.Add("x-forwarded-for", requestContext.ClientIpAddresses[0].ToString());
                     request.Headers.Add("User-Agent", requestContext.UserAgentString);
                     request.AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate;
