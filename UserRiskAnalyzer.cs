@@ -301,7 +301,7 @@ namespace ThreatDetectionModule
                     request.Headers.Add("x-nl3-authorization-token", handler.WriteToken(token));
                     request.Headers.Add("x-nl3-device-location", geo);
                     request.Headers.Add("x-forwarded-for", requestContext.ClientIpAddresses[0].ToString());
-                    request.Headers.Add("User-Agent", requestContext.UserAgentString);
+                    request.UserAgent = requestContext.UserAgentString;
                     request.AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate;
                     Stream requestStream = request.GetRequestStream();
                     requestStream.Write(byteArray, 0, byteArray.Length);
