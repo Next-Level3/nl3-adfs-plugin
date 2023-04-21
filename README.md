@@ -8,7 +8,7 @@
 - System.IdentityModel.Tokens.Jwt.dll
 - ThreatDetectionModule.dll
 ### 3 - Download and install the .NET 4.7.2 Developer Pack (https://dotnet.microsoft.com/en-us/download/dotnet-framework/net472)
-### 4 - Run gacutil.exe to register EACH of the DLLs from an elevated command prompt (e.g., C:\Program Files (x86)\Microsoft SDKs\Windows\v10.0A\bin\Gacutil /IF C:\extensions\ThreatDetectionModule.dll) on each server in the farm.
+### 4 - Run gacutil.exe to register EACH of the DLLs from an elevated command prompt (e.g., "C:\Program Files (x86)\Microsoft SDKs\Windows\v10.0A\bin\NETFX 4.7.2 Tools\Gacutil.exe" /IF C:\extensions\ThreatDetectionModule.dll) on each server in the farm.
 ### 5 - Install the configuraion file appConfig.csv to a folder (e.g., C:\extensions) on each server in the farm.
 Update the configuration file fields as appropriate for each protected application
 - LookupKey - This is either the Client ID for Oauth and applications that send a Client ID or the Issuer for SAML/WS-Fed integrations.
