@@ -278,7 +278,7 @@ namespace ThreatDetectionModule
                         if (jsonIPDetails.HasValues)
                         {
                             location = jsonIPDetails["city"] + ", " + jsonIPDetails["region"];
-                            geo = jsonIPDetails["loc"];
+                            geo = jsonIPDetails["loc"] + "";
                         }
                     }
                     HttpWebRequest request = (HttpWebRequest)WebRequest.Create("https://" + apiUrl + "/nl3/api/" + apiVersion + "/accountProtectionCheck");
