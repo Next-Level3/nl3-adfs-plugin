@@ -17,7 +17,7 @@ Update the configuration file fields as appropriate for each protected applicati
 - APIUrl - The URL for the Next Level3 API you will target for this environment (e.g., api.nextlevel3.com, api.dev.nextlevel3.com)
 - APIVersion - The version of the API you are targeting (e.g., v1)
 - IPInfoToken - An API Token for https://ipinfo.io if you want to include IP and Geolocation information
-### 6 - Register the plugin and configuration file on each server in the farm (e.g., Register-AdfsThreatDetectionModule -Name "AccountProtectionCheckPlugin" -TypeName "ThreatDetectionModule.UserRiskAnalyzer, ThreatDetectionModule, Version=10.0.0.0, Culture=neutral, PublicKeyToken=4afaf2b6a3a6959d" -ConfigurationFilePath "C:\extensions\apcConfig.csv")
+### 6 - Register the plugin and configuration file on each server in the farm from elevated PowerShell window (e.g., Register-AdfsThreatDetectionModule -Name "AccountProtectionCheckPlugin" -TypeName "ThreatDetectionModule.UserRiskAnalyzer, ThreatDetectionModule, Version=10.0.0.0, Culture=neutral, PublicKeyToken=4afaf2b6a3a6959d" -ConfigurationFilePath "C:\extensions\apcConfig.csv")
 ### 7 - Restart the "Active Directory Federation Services" service in services.msc. (Redo this step any time you update a .DLL or make other significant changes)
 ## Other useful commands
 - UnRegister-AdfsThreatDetectionModule -Name "AccountProtectionCheckPlugin"
