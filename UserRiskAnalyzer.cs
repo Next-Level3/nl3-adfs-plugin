@@ -1,4 +1,4 @@
-﻿using Microsoft.IdentityServer.Public.ThreatDetectionFramework;
+using Microsoft.IdentityServer.Public.ThreatDetectionFramework;
 using Microsoft.VisualBasic.FileIO;
 using System;
 using System.IO;
@@ -16,6 +16,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.IdentityModel;
 using Microsoft.IdentityModel.Tokens;
 using System.Web;
+using System.IO.Compression;
 
 namespace ThreatDetectionModule
 {
@@ -112,7 +113,7 @@ namespace ThreatDetectionModule
         /// <param name="logger"></param>
         /// <param name="apcConfig"></param>
         /// <param name="clientId"></param>
-        private string GetSigningKey(ThreatDetectionLogger logger, String lookupKey, out String appName, out String apiUrl, out String apiVersion, out string ipInfoToken)
+        private string GetSigningKey(ThreatDetectionLogger logger, String lookupKey, out String appName, out String apiUrl, out String apiVersion, out string ipInfoToken, out bool failOpen)
         {
             JToken applicationToken = APCConfig.SelectToken("$.applications[?(@.LookupKey == '" + lookupKey + "')]");
             if (applicationToken.HasValues)
@@ -123,13 +124,15 @@ namespace ThreatDetectionModule
                 JToken tAPIUrl;
                 JToken tAPIVersion;
                 JToken tIPInfoToken;
-                if (application.TryGetValue("SigningKey", out signingKey) && application.TryGetValue("AppName", out tAppName) && application.TryGetValue("APIUrl", out tAPIUrl) && application.TryGetValue("APIVersion", out tAPIVersion) && application.TryGetValue("IPInfoToken", out tIPInfoToken))
+                JToken tFailOpen;
+                if (application.TryGetValue("SigningKey", out signingKey) && application.TryGetValue("AppName", out tAppName) && application.TryGetValue("APIUrl", out tAPIUrl) && application.TryGetValue("APIVersion", out tAPIVersion) && application.TryGetValue("IPInfoToken", out tIPInfoToken) && application.TryGetValue("FailOpen", out tFailOpen))
                 {
                     string sk = signingKey.Value<string>();
                     appName = tAppName.Value<string>();
                     apiUrl = tAPIUrl.Value<string>();
                     apiVersion = tAPIVersion.Value<string>();
                     ipInfoToken = tIPInfoToken.Value<string>();
+                    failOpen = tFailOpen.Value<bool>();
                     return sk;
                 }
                 else
@@ -141,6 +144,7 @@ namespace ThreatDetectionModule
             apiUrl = "";
             apiVersion = "";
             ipInfoToken = "";
+            failOpen = true;
             return null;
         }
 
@@ -172,9 +176,10 @@ namespace ThreatDetectionModule
         /// <returns></returns>
         public Task<ThrottleStatus> EvaluatePreAuthentication(ThreatDetectionLogger logger, RequestContext requestContext, SecurityContext securityContext, ProtocolContext protocolContext, IList<Claim> additionalClaims)
         {
+            bool failOpen = false;
             try
             {
-                var referer = requestContext.Headers.Get("Referer");
+                var referer = requestContext.Headers.Get("Referer").Replace("??", "?").Replace("'%'", "%");
                 string username = securityContext.UserIdentifier;
                 logger?.WriteAdminLogErrorMessage($"Referer = {referer}");
                 Uri refererUri = new Uri(referer);
@@ -196,6 +201,7 @@ namespace ThreatDetectionModule
                 logger?.WriteAdminLogErrorMessage($"Local EndPoint Absolute Path = {requestContext.LocalEndPointAbsolutePath}");
                 logger?.WriteAdminLogErrorMessage($"Proxy Server = {requestContext.ProxyServer}");
                 logger?.WriteAdminLogErrorMessage($"Username = {username}");
+                logger?.WriteAdminLogErrorMessage($"Authority = {securityContext.Authority}");
                 if (requestContext.Headers.HasKeys())
                 {
                     if (requestContext.Headers["Cookie"] != null)
@@ -233,6 +239,23 @@ namespace ThreatDetectionModule
                         }
                     }
                 }
+                logger?.WriteAdminLogErrorMessage($"After SAML Cookie Parsing!");
+                if (issuerOrClientId == null && referer.ToLower().Contains("samlrequest"))
+                {
+                    mSamlRequest = HttpUtility.ParseQueryString(refererUri.Query).Get("SAMLRequest").Replace("%25", "%").Replace("%2B", "+").Replace("%2F", "/").Replace("%3D", "=");
+                    logger?.WriteAdminLogErrorMessage($"mSamlRequest After ParseQueryString = {mSamlRequest}");
+                    if (mSamlRequest != null & mSamlRequest.Length > 0)
+                    {
+                        logger?.WriteAdminLogErrorMessage($"mSamlRequest After Url Decode = {mSamlRequest}");
+                        MemoryStream memStream = new MemoryStream(Convert.FromBase64String(mSamlRequest));
+                        DeflateStream deflate = new DeflateStream(memStream, CompressionMode.Decompress);
+                        mSamlRequest = new StreamReader(deflate, System.Text.Encoding.UTF8).ReadToEnd();
+                        XmlDocument xmlDoc = new XmlDocument();
+                        xmlDoc.LoadXml(mSamlRequest);
+                        XmlNode issuerNode = xmlDoc.SelectSingleNode("/");
+                        issuerOrClientId = issuerNode.InnerText;
+                    }
+                }
                 logger?.WriteAdminLogErrorMessage($"mSamlRequest = {mSamlRequest}");
                 if (issuerOrClientId == null)
                 {
@@ -255,7 +278,7 @@ namespace ThreatDetectionModule
                     }
                 }
                 logger?.WriteAdminLogErrorMessage($"Issuer or Client ID = {issuerOrClientId}");
-                string base64SigningKey = GetSigningKey(logger, issuerOrClientId, out appName, out apiUrl, out apiVersion, out ipInfoToken);
+                string base64SigningKey = GetSigningKey(logger, issuerOrClientId, out appName, out apiUrl, out apiVersion, out ipInfoToken, out failOpen);
                 if (base64SigningKey != null && base64SigningKey.Length > 5)
                 {
                     byte[] key = Convert.FromBase64String(base64SigningKey);
@@ -345,13 +368,26 @@ namespace ThreatDetectionModule
                 else
                 {
                     logger?.WriteAdminLogErrorMessage($"No signing key identified for Client ID = " + issuerOrClientId + ", please check configuration file!");
-                    return Task.FromResult<ThrottleStatus>(ThrottleStatus.Allow);
+                    if (failOpen)
+                    {
+                        return Task.FromResult<ThrottleStatus>(ThrottleStatus.Allow);
+                    } else
+                    {
+                        return Task.FromResult<ThrottleStatus>(ThrottleStatus.Block);
+                    }
                 }
             }
             catch (Exception ex)
             {
                 logger?.WriteAdminLogErrorMessage($"Exception = " + ex.ToString());
-                return Task.FromResult<ThrottleStatus>(ThrottleStatus.Block);
+                if (failOpen)
+                {
+                    return Task.FromResult<ThrottleStatus>(ThrottleStatus.Allow);
+                }
+                else
+                {
+                    return Task.FromResult<ThrottleStatus>(ThrottleStatus.Block);
+                }
             }
         }
     }
